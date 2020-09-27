@@ -1,0 +1,4 @@
+.telenor-nbiot
+bin
+cmd/aqconfig/aqconfig
+cmd/aqdevice/aqdevice
