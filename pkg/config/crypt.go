@@ -4,23 +4,14 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-	"encoding/base64"
 	"errors"
 )
 
 // EncryptPayload is a utility function which encrypts a payload using
-// AES given a key.
+// AES and a given key.
 func EncryptPayload(payload []byte, key []byte) ([]byte, error) {
-	// Decode the base64 encoded key
-	aesKeyDecoded := make([]byte, base64.StdEncoding.DecodedLen(len(key)))
-	n, err := base64.StdEncoding.Decode(aesKeyDecoded, key)
-	if err != nil {
-		return nil, err
-	}
-	aesKey := aesKeyDecoded[:n]
-
 	// Create an AES instance
-	c, err := aes.NewCipher(aesKey)
+	c, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +22,7 @@ func EncryptPayload(payload []byte, key []byte) ([]byte, error) {
 	}
 
 	nonce := make([]byte, gcm.NonceSize())
-	n, err = rand.Read(nonce)
+	n, err := rand.Read(nonce)
 	if err != nil {
 		return nil, err
 	}
@@ -40,4 +31,33 @@ func EncryptPayload(payload []byte, key []byte) ([]byte, error) {
 	}
 
 	return gcm.Seal(nonce, nonce, payload, nil), nil
+}
+
+// DecryptPayload is a utility function which decrypts a payload using
+// AES and a given key.
+func DecryptPayload(ciphertext []byte, key []byte) ([]byte, error) {
+	// Create an AES instance
+	c, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	// Use gcm mode (Galois Counter Mode)
+	gcm, err := cipher.NewGCM(c)
+	if err != nil {
+		return nil, err
+	}
+
+	nonceSize := gcm.NonceSize()
+	if len(ciphertext) < nonceSize {
+		return nil, err
+	}
+
+	nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
+	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return plaintext, nil
 }
